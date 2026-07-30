@@ -17,7 +17,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel git wget bzip2 xorg-server-xvfb patchelf zsync awk gtk3 dbus-glib libxt alsa-lib
+          pacman -S --noconfirm base-devel git wget bzip2 xorg-server-xvfb patchelf zsync awk gtk3 dbus-glib libxt alsa-lib nss nspr
 
       - name: Build SeaMonkey AppImage
         run: |
@@ -61,8 +61,9 @@ jobs:
           export OUTPATH="$(pwd)"
           export OUTNAME="SeaMonkey-x86_64.AppImage"
 
-          ./anylinux-appimages/useful-tools/quick-sharun.sh seamonkey-src/usr/bin/seamonkey-launcher
-
+          mkdir -p AppDir/bin
+          ( sleep 15 && pkill -f seamonkey ) &  
+          xvfb-run -a ./anylinux-appimages/useful-tools/quick-sharun.sh seamonkey-src/usr/bin/seamonkey-launcher || true
           cp -r seamonkey-src/usr/bin/seamonkey AppDir/bin/
 
           ./anylinux-appimages/useful-tools/quick-sharun.sh --make-appimage
