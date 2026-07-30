@@ -1,0 +1,76 @@
+name: Build SeaMonkey AppImage Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: 
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    container: archlinux:latest 
+
+    steps:
+      - name: Install System Dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel git wget bzip2 xorg-server-xvfb patchelf zsync awk gtk3 dbus-glib libxt alsa-lib
+
+      - name: Build SeaMonkey AppImage
+        run: |
+          #!/bin/bash
+          set -e
+
+          mkdir -p seamonkey-src/usr/bin
+          
+          wget -qO seamonkey.tar.bz2 "https://download.mozilla.org/?product=seamonkey-latest&os=linux64&lang=en-US"
+          tar -xjf seamonkey.tar.bz2 -C seamonkey-src/usr/bin
+          rm seamonkey.tar.bz2
+
+          cat << 'EOF' > seamonkey-src/usr/bin/seamonkey-launcher
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/seamonkey/seamonkey" "$@"
+          EOF
+          chmod +x seamonkey-src/usr/bin/seamonkey-launcher
+
+          mkdir -p seamonkey-src/usr/share/applications seamonkey-src/usr/share/icons/hicolor/128x128/apps
+          cp seamonkey-src/usr/bin/seamonkey/chrome/icons/default/default128.png seamonkey-src/usr/share/icons/hicolor/128x128/apps/seamonkey.png || wget -qO seamonkey-src/usr/share/icons/hicolor/128x128/apps/seamonkey.png "https://upload.wikimedia.org/wikipedia/commons/4/46/SeaMonkey_Icon.png"
+
+          cat << EOF > seamonkey-src/usr/share/applications/seamonkey.desktop
+          [Desktop Entry]
+          Type=Application
+          Name=SeaMonkey
+          Exec=seamonkey-launcher
+          Icon=seamonkey
+          Terminal=false
+          Categories=Network;WebBrowser;Email;
+          EOF
+
+          git clone https://github.com/pkgforge-dev/anylinux-appimages.git
+          chmod +x ./anylinux-appimages/useful-tools/quick-sharun.sh
+          chmod +x ./anylinux-appimages/useful-tools/get-debloated-pkgs.sh
+
+          ./anylinux-appimages/useful-tools/get-debloated-pkgs.sh --add-common --prefer-nano
+
+          export ICON="$(pwd)/seamonkey-src/usr/share/icons/hicolor/128x128/apps/seamonkey.png"
+          export DESKTOP="$(pwd)/seamonkey-src/usr/share/applications/seamonkey.desktop"
+          export OUTPATH="$(pwd)"
+          export OUTNAME="SeaMonkey-x86_64.AppImage"
+
+          ./anylinux-appimages/useful-tools/quick-sharun.sh seamonkey-src/usr/bin/seamonkey-launcher
+
+          cp -r seamonkey-src/usr/bin/seamonkey AppDir/bin/
+
+          ./anylinux-appimages/useful-tools/quick-sharun.sh --make-appimage
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: continuous
+          name: "SeaMonkey Continuous Build"
+          files: "SeaMonkey-x86_64.AppImage"
+          prerelease: true
