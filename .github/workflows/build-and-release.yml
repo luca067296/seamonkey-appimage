@@ -62,7 +62,7 @@ jobs:
           export OUTNAME="SeaMonkey-x86_64.AppImage"
 
           mkdir -p AppDir/bin
-          ( sleep 15 && pkill -f seamonkey ) &  
+          ( sleep 15 && pkill -x seamonkey-bin || pkill -x seamonkey || true ) &
           xvfb-run -a ./anylinux-appimages/useful-tools/quick-sharun.sh seamonkey-src/usr/bin/seamonkey-launcher || true
           cp -r seamonkey-src/usr/bin/seamonkey AppDir/bin/
 
