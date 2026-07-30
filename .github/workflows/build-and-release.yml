@@ -1,9 +1,12 @@
 name: Build SeaMonkey AppImage Release
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch: 
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'SeaMonkey version (e.g., 2.53.24)'
+        required: true
+        default: '2.53.24'
 
 permissions:
   contents: write
@@ -24,9 +27,11 @@ jobs:
           #!/bin/bash
           set -e
 
+          VERSION="${{ github.event.inputs.version }}"
+          
           mkdir -p seamonkey-src/usr/bin
           
-          wget -qO seamonkey.tar.bz2 "https://download.mozilla.org/?product=seamonkey-latest&os=linux64&lang=en-US"
+          wget -qO seamonkey.tar.bz2 "https://archive.seamonkey-project.org/releases/${VERSION}/linux-x86_64/en-US/seamonkey-${VERSION}.en-US.linux-x86_64.tar.bz2"
           tar -xjf seamonkey.tar.bz2 -C seamonkey-src/usr/bin
           rm seamonkey.tar.bz2
 
@@ -71,7 +76,7 @@ jobs:
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: continuous
-          name: "SeaMonkey Continuous Build"
+          tag_name: "v${{ github.event.inputs.version }}"
+          name: "SeaMonkey ${{ github.event.inputs.version }}"
           files: "SeaMonkey-x86_64.AppImage"
-          prerelease: true
+          prerelease: false
